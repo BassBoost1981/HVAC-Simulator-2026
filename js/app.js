@@ -17,7 +17,8 @@ import propertiesPanel from './ui/properties.js';
 import toolbar from './ui/toolbar.js';
 import roomModal from './ui/roomModal.js';
 import { initI18n, setLanguage, t, onLanguageChange } from './ui/i18n.js';
-import undoRedo, { snapshotOutlet } from './ui/undoRedo.js';
+import undoRedo, { snapshotOutlet, snapshotObstacle } from './ui/undoRedo.js';
+import obstacleManager, { OBSTACLE_PRESETS } from './scene/obstacleManager.js';
 import { initProjectFile, saveProject, openFileDialog } from './io/projectFile.js';
 import { exportPDF } from './io/pdfExport.js';
 
@@ -29,6 +30,7 @@ const state = {
     selectedOutletId: null,
     gridSnap: 0.25,
     language: 'de',
+    obstacles: new Map(),
     showCones: true,
     showParticles: false,
     showSoundHeatmap: false,
@@ -36,7 +38,8 @@ const state = {
     sliceHeight: 1.2,
     projectName: '',
     comfortResult: null,
-    balance: null
+    balance: null,
+    selectedObstacleId: null
 };
 
 // ---- Initialization ----
@@ -52,6 +55,7 @@ async function init() {
     // Sidebar
     sidebar.init((typeKey, sizeIndex, outletCategory) => {
         if (!state.room) return;
+        obstacleManager.cancelPlacement();
         outletPlacer.startPlacement(typeKey, sizeIndex, outletCategory);
     });
 
@@ -65,8 +69,18 @@ async function init() {
         onDragEnd: handleDragEnd
     });
 
+    // Obstacle manager
+    obstacleManager.init({
+        onPlaced: handleObstaclePlaced,
+        onSelected: handleObstacleSelected,
+        onDeselected: handleObstacleDeselected,
+        onMoved: handleObstacleMoved,
+        onDragEnd: handleObstacleDragEnd
+    });
+
     // Properties panel
-    propertiesPanel.init(handleParamChanged, handleOutletDelete, handleBeforeParamChange);
+    propertiesPanel.init(handleParamChanged, handleOutletDelete, handleBeforeParamChange,
+                         handleObstacleParamChanged, handleObstacleDelete);
 
     // Toolbar
     toolbar.init({
@@ -86,6 +100,9 @@ async function init() {
     // Undo/Redo buttons
     document.getElementById('btn-undo')?.addEventListener('click', applyUndo);
     document.getElementById('btn-redo')?.addEventListener('click', applyRedo);
+
+    // Obstacle placement buttons
+    _initObstacleMenu();
 
     // Save/Load/PDF
     initProjectFile(getStateForSave, loadStateFromProject);
@@ -167,8 +184,11 @@ function handleCreateRoom({ length, width, height, roomType, temperature, surfac
     // Clear existing
     state.outlets.clear();
     state.results.clear();
+    state.obstacles.clear();
     state.selectedOutletId = null;
+    state.selectedObstacleId = null;
     outletPlacer.cancelPlacement();
+    obstacleManager.clearAll();
     visualization.clearAll();
     sceneManager.clearGroup(sceneManager.outletsGroup);
     sceneManager.clearGroup(sceneManager.helperGroup);
@@ -270,12 +290,22 @@ function handleOutletSelected(outletId) {
 
 function handleOutletDeselected() {
     state.selectedOutletId = null;
+    // Also deselect any selected obstacle
+    if (state.selectedObstacleId) {
+        state.selectedObstacleId = null;
+        obstacleManager.deselectObstacle();
+    }
     if (state.room) propertiesPanel.showRoom(state.room);
     else propertiesPanel.showEmpty();
 }
 
 function selectOutlet(outletId) {
     state.selectedOutletId = outletId;
+    // Deselect any selected obstacle
+    if (state.selectedObstacleId) {
+        state.selectedObstacleId = null;
+        obstacleManager.deselectObstacle();
+    }
     outletPlacer.selectOutlet(outletId);
     const outlet = state.outlets.get(outletId);
     const results = state.results.get(outletId);
@@ -537,6 +567,152 @@ function updateHeatmaps() {
 }
 
 // ================================================================
+//  OBSTACLES
+// ================================================================
+
+function _initObstacleMenu() {
+    const btn = document.getElementById('btn-add-obstacle');
+    const menu = document.getElementById('obstacle-menu');
+    if (!btn || !menu) return;
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.toggle('visible');
+    });
+
+    // Close menu when clicking elsewhere
+    document.addEventListener('click', () => {
+        menu.classList.remove('visible');
+    });
+
+    // Populate preset buttons
+    for (const [key, preset] of Object.entries(OBSTACLE_PRESETS)) {
+        const item = document.createElement('button');
+        item.className = 'obstacle-menu-item';
+        item.textContent = `${preset.icon} ${t('obstacle.' + key)}`;
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!state.room) return;
+            menu.classList.remove('visible');
+            outletPlacer.cancelPlacement();
+            obstacleManager.startPlacement(key);
+        });
+        menu.appendChild(item);
+    }
+}
+
+function handleObstaclePlaced(obstacleData) {
+    state.obstacles.set(obstacleData.id, obstacleData);
+    obstacleManager.addObstacle(obstacleData);
+
+    undoRedo.push({
+        type: 'add_obstacle',
+        obstacleId: obstacleData.id,
+        after: snapshotObstacle(obstacleData)
+    });
+
+    selectObstacleInApp(obstacleData.id);
+    _recalculateAll();
+}
+
+function handleObstacleSelected(obstacleId) {
+    // Deselect outlet if any
+    if (state.selectedOutletId) {
+        state.selectedOutletId = null;
+        outletPlacer.selectOutlet(null);
+    }
+    selectObstacleInApp(obstacleId);
+}
+
+function handleObstacleDeselected() {
+    state.selectedObstacleId = null;
+    if (state.room) propertiesPanel.showRoom(state.room);
+    else propertiesPanel.showEmpty();
+}
+
+function selectObstacleInApp(obstacleId) {
+    state.selectedObstacleId = obstacleId;
+    state.selectedOutletId = null;
+    obstacleManager.selectObstacle(obstacleId);
+    const obstacle = state.obstacles.get(obstacleId);
+    if (obstacle && state.room) {
+        propertiesPanel.showObstacle(obstacle, state.room);
+    }
+}
+
+let _obstacleDragBeforeSnapshot = null;
+
+function handleObstacleMoved(obstacleId, newX, newZ) {
+    const obstacle = state.obstacles.get(obstacleId);
+    if (!obstacle) return;
+
+    if (!_obstacleDragBeforeSnapshot || _obstacleDragBeforeSnapshot.id !== obstacleId) {
+        _obstacleDragBeforeSnapshot = snapshotObstacle(obstacle);
+    }
+
+    obstacle.position.x = newX;
+    obstacle.position.z = newZ;
+}
+
+function handleObstacleDragEnd(obstacleId) {
+    if (_obstacleDragBeforeSnapshot) {
+        const obstacle = state.obstacles.get(_obstacleDragBeforeSnapshot.id);
+        if (obstacle) {
+            const after = snapshotObstacle(obstacle);
+            if (after.position.x !== _obstacleDragBeforeSnapshot.position.x ||
+                after.position.z !== _obstacleDragBeforeSnapshot.position.z) {
+                undoRedo.push({
+                    type: 'modify_obstacle',
+                    obstacleId: obstacle.id,
+                    before: _obstacleDragBeforeSnapshot,
+                    after
+                });
+            }
+        }
+        _obstacleDragBeforeSnapshot = null;
+    }
+    _recalculateAll();
+}
+
+function handleObstacleParamChanged(obstacleId) {
+    const obstacle = state.obstacles.get(obstacleId);
+    if (!obstacle) return;
+
+    obstacleManager.updateObstacle(obstacleId, obstacle);
+    if (state.selectedObstacleId === obstacleId) {
+        selectObstacleInApp(obstacleId);
+    }
+    _recalculateAll();
+}
+
+function handleObstacleDelete(obstacleId, skipUndo) {
+    const obstacle = state.obstacles.get(obstacleId);
+    if (!skipUndo && obstacle) {
+        undoRedo.push({
+            type: 'remove_obstacle',
+            obstacleId,
+            before: snapshotObstacle(obstacle)
+        });
+    }
+
+    state.obstacles.delete(obstacleId);
+    obstacleManager.removeObstacle(obstacleId);
+
+    state.selectedObstacleId = null;
+    if (state.room) propertiesPanel.showRoom(state.room);
+    else propertiesPanel.showEmpty();
+
+    _recalculateAll();
+}
+
+/** Recalculate all outlets (e.g., after obstacle changes affect flow) */
+function _recalculateAll() {
+    state.outlets.forEach((outlet, id) => {
+        recalculate(id);
+    });
+}
+
+// ================================================================
 //  CAMERA & TOOLBAR
 // ================================================================
 
@@ -554,6 +730,7 @@ function handleViewChange(view) {
 function handleGridChange(value) {
     state.gridSnap = value;
     outletPlacer.setGridSnap(value);
+    obstacleManager.setGridSnap(value);
 }
 
 function handleVisToggle(type, visible) {
@@ -673,7 +850,56 @@ function _applyAction(action, isUndo) {
                 _restoreOutletState(action.after);
             }
             break;
+
+        case 'add_obstacle':
+            if (isUndo) {
+                handleObstacleDelete(action.obstacleId, true);
+            } else {
+                _restoreObstacleFromSnapshot(action.after);
+            }
+            break;
+
+        case 'remove_obstacle':
+            if (isUndo) {
+                _restoreObstacleFromSnapshot(action.before);
+            } else {
+                handleObstacleDelete(action.obstacleId, true);
+            }
+            break;
+
+        case 'modify_obstacle':
+            if (isUndo) {
+                _restoreObstacleState(action.before);
+            } else {
+                _restoreObstacleState(action.after);
+            }
+            break;
     }
+}
+
+function _restoreObstacleFromSnapshot(snap) {
+    const data = { ...snap };
+    state.obstacles.set(data.id, data);
+    obstacleManager.addObstacle(data);
+    selectObstacleInApp(data.id);
+    _recalculateAll();
+}
+
+function _restoreObstacleState(snap) {
+    const obstacle = state.obstacles.get(snap.id);
+    if (!obstacle) return;
+
+    obstacle.presetKey = snap.presetKey;
+    obstacle.shape = snap.shape;
+    obstacle.width = snap.width;
+    obstacle.depth = snap.depth;
+    obstacle.height = snap.height;
+    obstacle.color = snap.color;
+    obstacle.position = { x: snap.position.x, z: snap.position.z };
+
+    obstacleManager.updateObstacle(snap.id, obstacle);
+    selectObstacleInApp(snap.id);
+    _recalculateAll();
 }
 
 /**
@@ -755,13 +981,19 @@ undoRedo.onChange((canUndo, canRedo) => {
 // ================================================================
 
 function handleKeyboard(event) {
-    if ((event.key === 'Delete' || event.key === 'Backspace') && state.selectedOutletId) {
+    if ((event.key === 'Delete' || event.key === 'Backspace')) {
         if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') return;
-        handleOutletDelete(state.selectedOutletId);
+        if (state.selectedOutletId) handleOutletDelete(state.selectedOutletId);
+        else if (state.selectedObstacleId) handleObstacleDelete(state.selectedObstacleId);
     }
 
     if (event.key === 'Escape') {
         if (state.selectedOutletId) handleOutletDeselected();
+        if (state.selectedObstacleId) {
+            obstacleManager.deselectObstacle();
+            state.selectedObstacleId = null;
+        }
+        obstacleManager.cancelPlacement();
         sidebar.clearSelection();
     }
 
@@ -812,6 +1044,7 @@ function getStateForSave() {
     return {
         room: state.room,
         outlets: state.outlets,
+        obstacles: state.obstacles,
         results: state.results,
         gridSnap: state.gridSnap,
         language: state.language,
@@ -876,6 +1109,14 @@ function loadStateFromProject(project) {
                 outletData.outletCategory = o.outletCategory || 'supply';
 
                 addOutlet(outletData);
+            }
+
+            // Restore obstacles
+            if (project.obstacles && project.obstacles.length > 0) {
+                for (const o of project.obstacles) {
+                    state.obstacles.set(o.id, o);
+                    obstacleManager.addObstacle(o);
+                }
             }
 
             // Restore camera

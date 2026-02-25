@@ -114,5 +114,19 @@
     "status.balance.diff": "Volume flow difference {percent}%",
     "status.balance.diffStrong": "Volume flow difference {percent}% — strong over/underpressure",
     "status.balance.balanced": "Balance equalized ({percent}%)",
-    "toolbar.height.label": "Height:"
+    "toolbar.height.label": "Height:",
+    "obstacle.add": "Obstacle",
+    "obstacle.title": "Obstacle",
+    "obstacle.type": "Type",
+    "obstacle.width": "Width",
+    "obstacle.depth": "Depth",
+    "obstacle.height": "Height",
+    "obstacle.position": "Position",
+    "obstacle.delete": "Remove Obstacle",
+    "obstacle.column_round": "Round Column",
+    "obstacle.column_square": "Square Column",
+    "obstacle.desk": "Desk",
+    "obstacle.cabinet": "Cabinet",
+    "obstacle.custom_box": "Custom Box",
+    "obstacle.diameter": "Diameter"
 }

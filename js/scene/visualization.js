@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import sceneManager from './sceneManager.js';
+import obstacleManager from './obstacleManager.js';
 
 // Velocity color stops
 const VELOCITY_COLORS = [
@@ -588,6 +589,16 @@ class Visualization {
                 if (positions[i3 + 1] > room.height) {
                     positions[i3 + 1] = room.height;
                     velocities[i3 + 1] *= -0.3;
+                }
+
+                // Obstacle collision (soft bounce)
+                if (obstacleManager.isInsideObstacle(positions[i3], positions[i3 + 1], positions[i3 + 2])) {
+                    // Reflect velocity and push particle out
+                    velocities[i3] *= -0.3;
+                    velocities[i3 + 2] *= -0.3;
+                    velocities[i3 + 1] = Math.abs(velocities[i3 + 1]) * 0.2 + 0.02;
+                    positions[i3] -= velocities[i3] * dt * 3;
+                    positions[i3 + 2] -= velocities[i3 + 2] * dt * 3;
                 }
 
                 // Smoke-like color & size based on age and distance

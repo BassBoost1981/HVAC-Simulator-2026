@@ -114,5 +114,19 @@
     "status.balance.diff": "Volumenstrom-Differenz {percent}%",
     "status.balance.diffStrong": "Volumenstrom-Differenz {percent}% — starker Über-/Unterdruck",
     "status.balance.balanced": "Bilanz ausgeglichen ({percent}%)",
-    "toolbar.height.label": "Höhe:"
+    "toolbar.height.label": "Höhe:",
+    "obstacle.add": "Hindernis",
+    "obstacle.title": "Hindernis",
+    "obstacle.type": "Typ",
+    "obstacle.width": "Breite",
+    "obstacle.depth": "Tiefe",
+    "obstacle.height": "Höhe",
+    "obstacle.position": "Position",
+    "obstacle.delete": "Hindernis entfernen",
+    "obstacle.column_round": "Rundsäule",
+    "obstacle.column_square": "Rechtecksäule",
+    "obstacle.desk": "Schreibtisch",
+    "obstacle.cabinet": "Schrank",
+    "obstacle.custom_box": "Box (frei)",
+    "obstacle.diameter": "Durchmesser"
 }

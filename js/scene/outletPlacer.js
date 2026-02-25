@@ -261,6 +261,8 @@ class OutletPlacer {
 
     _onMouseDown(event) {
         if (event.button !== 0) return;
+        // If obstacleManager already handled this click, skip
+        if (event._obstacleHandled) return;
 
         if (this.placementMode) {
             this._handlePlacement(event);

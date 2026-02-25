@@ -3,6 +3,7 @@
 // ============================================================
 
 import { DIFFUSER_TYPES, EXHAUST_TYPES, ROOM_TYPES, SLOT_DIRECTIONS, getType, getSize } from '../simulation/diffuserDB.js';
+import { OBSTACLE_PRESETS } from '../scene/obstacleManager.js';
 import { t, onLanguageChange } from './i18n.js';
 
 class PropertiesPanel {
@@ -12,15 +13,20 @@ class PropertiesPanel {
         this.onParamChange = null;
         this.onOutletDelete = null;
         this.onBeforeParamChange = null;
+        this.onObstacleParamChange = null;
+        this.onObstacleDelete = null;
         this.currentOutlet = null;
+        this.currentObstacle = null;
         this.currentRoom = null;
         this.currentResults = null;
     }
 
-    init(onParamChange, onOutletDelete, onBeforeParamChange) {
+    init(onParamChange, onOutletDelete, onBeforeParamChange, onObstacleParamChange, onObstacleDelete) {
         this.onParamChange = onParamChange;
         this.onOutletDelete = onOutletDelete;
         this.onBeforeParamChange = onBeforeParamChange || null;
+        this.onObstacleParamChange = onObstacleParamChange || null;
+        this.onObstacleDelete = onObstacleDelete || null;
     }
 
     /**
@@ -400,6 +406,119 @@ class PropertiesPanel {
                 }
             });
         }
+    }
+
+    /**
+     * Show obstacle parameters
+     */
+    showObstacle(obstacle, room) {
+        this.currentOutlet = null;
+        this.currentObstacle = obstacle;
+        this.currentRoom = room;
+        if (this.emptyState) this.emptyState.style.display = 'none';
+
+        const preset = OBSTACLE_PRESETS[obstacle.presetKey] || {};
+        const presetName = t('obstacle.' + obstacle.presetKey);
+        const isCylinder = obstacle.shape === 'cylinder';
+
+        this.container.innerHTML = `
+            <div class="props-section">
+                <div class="props-section-title">${t('obstacle.title')}</div>
+                <div class="result-row">
+                    <span class="result-label">${t('obstacle.type')}</span>
+                    <span class="result-value">${presetName}</span>
+                </div>
+                <div class="form-group">
+                    <label>${isCylinder ? t('obstacle.diameter') : t('obstacle.width')}</label>
+                    <div class="input-row">
+                        <input type="number" id="prop-obs-width" min="0.1" max="10" step="0.1" value="${obstacle.width}">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>
+                ${isCylinder ? '' : `<div class="form-group">
+                    <label>${t('obstacle.depth')}</label>
+                    <div class="input-row">
+                        <input type="number" id="prop-obs-depth" min="0.1" max="10" step="0.1" value="${obstacle.depth}">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>`}
+                <div class="form-group">
+                    <label>${t('obstacle.height')}</label>
+                    <div class="input-row">
+                        <input type="number" id="prop-obs-height" min="0.1" max="${room.height}" step="0.1" value="${obstacle.height}">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>${t('obstacle.position')}</label>
+                    <div class="input-row">
+                        <span class="input-unit" style="min-width:14px">X</span>
+                        <input type="number" id="prop-obs-x" step="0.25" value="${obstacle.position.x.toFixed(2)}">
+                        <span class="input-unit" style="min-width:14px">Z</span>
+                        <input type="number" id="prop-obs-z" step="0.25" value="${obstacle.position.z.toFixed(2)}">
+                    </div>
+                </div>
+            </div>
+            <div class="props-section" style="padding-top:8px;">
+                <button class="btn-secondary" id="btn-delete-obstacle" style="width:100%; color:var(--error); border-color: var(--error);">
+                    ${t('obstacle.delete')}
+                </button>
+            </div>
+        `;
+
+        this._attachObstacleListeners();
+    }
+
+    _attachObstacleListeners() {
+        const propW = document.getElementById('prop-obs-width');
+        const propD = document.getElementById('prop-obs-depth');
+        const propH = document.getElementById('prop-obs-height');
+        const propX = document.getElementById('prop-obs-x');
+        const propZ = document.getElementById('prop-obs-z');
+        const btnDel = document.getElementById('btn-delete-obstacle');
+
+        const emit = () => {
+            if (this.onObstacleParamChange && this.currentObstacle) {
+                this.onObstacleParamChange(this.currentObstacle.id);
+            }
+        };
+
+        if (propW) propW.addEventListener('input', (e) => {
+            if (this.currentObstacle) {
+                this.currentObstacle.width = Math.max(0.1, parseFloat(e.target.value) || 0.4);
+                if (this.currentObstacle.shape === 'cylinder') this.currentObstacle.depth = this.currentObstacle.width;
+                emit();
+            }
+        });
+        if (propD) propD.addEventListener('input', (e) => {
+            if (this.currentObstacle) {
+                this.currentObstacle.depth = Math.max(0.1, parseFloat(e.target.value) || 0.4);
+                emit();
+            }
+        });
+        if (propH) propH.addEventListener('input', (e) => {
+            if (this.currentObstacle) {
+                this.currentObstacle.height = Math.max(0.1, parseFloat(e.target.value) || 1.0);
+                emit();
+            }
+        });
+        if (propX) propX.addEventListener('input', (e) => {
+            if (this.currentObstacle) {
+                this.currentObstacle.position.x = parseFloat(e.target.value) || 0;
+                emit();
+            }
+        });
+        if (propZ) propZ.addEventListener('input', (e) => {
+            if (this.currentObstacle) {
+                this.currentObstacle.position.z = parseFloat(e.target.value) || 0;
+                emit();
+            }
+        });
+        if (btnDel) btnDel.addEventListener('click', () => {
+            if (this.currentObstacle && this.onObstacleDelete) {
+                this.onObstacleDelete(this.currentObstacle.id);
+            }
+        });
     }
 
     /**

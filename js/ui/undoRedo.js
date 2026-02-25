@@ -107,3 +107,22 @@ export function snapshotOutlet(outlet) {
         }
     };
 }
+
+/**
+ * Create a plain snapshot of obstacle data for undo/redo.
+ */
+export function snapshotObstacle(obstacle) {
+    return {
+        id: obstacle.id,
+        presetKey: obstacle.presetKey,
+        shape: obstacle.shape,
+        width: obstacle.width,
+        depth: obstacle.depth,
+        height: obstacle.height,
+        color: obstacle.color,
+        position: {
+            x: obstacle.position.x,
+            z: obstacle.position.z
+        }
+    };
+}

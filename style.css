@@ -868,6 +868,51 @@ html, body {
     white-space: nowrap;
 }
 
+/* --- Obstacle menu --- */
+.obstacle-btn-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.obstacle-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 4px 0;
+    min-width: 160px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.5);
+    z-index: 100;
+    margin-bottom: 4px;
+}
+
+.obstacle-menu.visible {
+    display: block;
+}
+
+.obstacle-menu-item {
+    display: block;
+    width: 100%;
+    padding: 6px 14px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-family: var(--font-default);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.obstacle-menu-item:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
 /* --- Placement cursor --- */
 #viewport.placing {
     cursor: crosshair;

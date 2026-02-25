@@ -136,6 +136,23 @@ function _stateToProject(state) {
         };
     });
 
+    // Collect obstacles
+    const obstacles = [];
+    if (state.obstacles) {
+        state.obstacles.forEach((obstacle, id) => {
+            obstacles.push({
+                id,
+                presetKey: obstacle.presetKey,
+                shape: obstacle.shape,
+                width: obstacle.width,
+                depth: obstacle.depth,
+                height: obstacle.height,
+                color: obstacle.color,
+                position: { x: obstacle.position.x, z: obstacle.position.z }
+            });
+        });
+    }
+
     return {
         version: PROJECT_VERSION,
         meta: {
@@ -154,6 +171,7 @@ function _stateToProject(state) {
             surfaces: state.room.surfaces || null
         } : null,
         outlets,
+        obstacles,
         results,
         view: state.cameraState || null,
         settings: {
