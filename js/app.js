@@ -17,6 +17,7 @@ import propertiesPanel from './ui/properties.js';
 import toolbar from './ui/toolbar.js';
 import roomModal from './ui/roomModal.js';
 import { initI18n, setLanguage, t, onLanguageChange } from './ui/i18n.js';
+import undoRedo, { snapshotOutlet } from './ui/undoRedo.js';
 import { initProjectFile, saveProject, openFileDialog } from './io/projectFile.js';
 import { exportPDF } from './io/pdfExport.js';
 
@@ -60,11 +61,12 @@ async function init() {
         onSelected: handleOutletSelected,
         onDeselected: handleOutletDeselected,
         onMoved: handleOutletMoved,
-        onRotated: handleOutletRotated
+        onRotated: handleOutletRotated,
+        onDragEnd: handleDragEnd
     });
 
     // Properties panel
-    propertiesPanel.init(handleParamChanged, handleOutletDelete);
+    propertiesPanel.init(handleParamChanged, handleOutletDelete, handleBeforeParamChange);
 
     // Toolbar
     toolbar.init({
@@ -80,6 +82,10 @@ async function init() {
     // Language toggle
     document.getElementById('lang-de')?.addEventListener('click', () => switchLanguage('de'));
     document.getElementById('lang-en')?.addEventListener('click', () => switchLanguage('en'));
+
+    // Undo/Redo buttons
+    document.getElementById('btn-undo')?.addEventListener('click', applyUndo);
+    document.getElementById('btn-redo')?.addEventListener('click', applyRedo);
 
     // Save/Load/PDF
     initProjectFile(getStateForSave, loadStateFromProject);
@@ -169,6 +175,7 @@ function handleCreateRoom({ length, width, height, roomType, temperature, surfac
 
     state.room = { length, width, height, roomType, temperature, surfaces: surfaces || null };
     state.balance = null;
+    undoRedo.clear();
     roomBuilder.buildRoom(length, width, height);
     propertiesPanel.showRoom(state.room);
     toolbar.updateStatus(0, null);
@@ -218,6 +225,11 @@ function handleLoadExample() {
 
 function handleOutletPlaced(outletData) {
     addOutlet(outletData);
+    undoRedo.push({
+        type: 'add',
+        outletId: outletData.id,
+        after: snapshotOutlet(outletData)
+    });
 }
 
 function addOutlet(outletData) {
@@ -272,7 +284,16 @@ function selectOutlet(outletId) {
     }
 }
 
-function handleOutletDelete(outletId) {
+function handleOutletDelete(outletId, skipUndo) {
+    const outlet = state.outlets.get(outletId);
+    if (!skipUndo && outlet) {
+        undoRedo.push({
+            type: 'remove',
+            outletId,
+            before: snapshotOutlet(outlet)
+        });
+    }
+
     state.outlets.delete(outletId);
     state.results.delete(outletId);
     outletPlacer.removeOutlet(outletId);
@@ -291,24 +312,96 @@ function handleOutletDelete(outletId) {
 
 // ---- Phase 2: Drag & Rotate handlers ----
 
+// Track the state at drag-start so we push only one undo entry per drag gesture
+let _dragBeforeSnapshot = null;
+
 function handleOutletMoved(outletId, newX, newZ) {
     const outlet = state.outlets.get(outletId);
     if (!outlet) return;
+
+    // Capture snapshot at the start of a drag (first move call)
+    if (!_dragBeforeSnapshot || _dragBeforeSnapshot.id !== outletId) {
+        _dragBeforeSnapshot = snapshotOutlet(outlet);
+    }
+
     outlet.position3D.x = newX;
     outlet.position3D.z = newZ;
     recalculate(outletId);
 }
 
+function handleDragEnd() {
+    if (_dragBeforeSnapshot) {
+        const outlet = state.outlets.get(_dragBeforeSnapshot.id);
+        if (outlet) {
+            const after = snapshotOutlet(outlet);
+            // Only push if position actually changed
+            if (after.position3D.x !== _dragBeforeSnapshot.position3D.x ||
+                after.position3D.z !== _dragBeforeSnapshot.position3D.z) {
+                undoRedo.push({
+                    type: 'modify',
+                    outletId: outlet.id,
+                    before: _dragBeforeSnapshot,
+                    after
+                });
+            }
+        }
+        _dragBeforeSnapshot = null;
+    }
+}
+
 function handleOutletRotated(outletId, newRotation) {
     const outlet = state.outlets.get(outletId);
     if (!outlet) return;
+    const before = snapshotOutlet(outlet);
     outlet.rotation = newRotation;
     recalculate(outletId);
+    undoRedo.push({
+        type: 'modify',
+        outletId,
+        before,
+        after: snapshotOutlet(outlet)
+    });
 }
 
 // ================================================================
 //  CALCULATION
 // ================================================================
+
+// Snapshot captured before a parameter change from the properties panel.
+// We keep the first snapshot until a debounce timer commits it, so that
+// rapid input events (e.g. typing a number) produce a single undo entry.
+let _paramBeforeSnapshot = null;
+let _paramCommitTimer = null;
+
+function handleBeforeParamChange(outletId) {
+    const outlet = state.outlets.get(outletId);
+    if (!outlet) return;
+    // Only capture once per gesture — don't overwrite while timer is pending
+    if (!_paramBeforeSnapshot || _paramBeforeSnapshot.id !== outletId) {
+        _paramBeforeSnapshot = snapshotOutlet(outlet);
+    }
+    // Reset the commit timer
+    if (_paramCommitTimer) clearTimeout(_paramCommitTimer);
+    _paramCommitTimer = setTimeout(() => _commitParamChange(outletId), 500);
+}
+
+function _commitParamChange(outletId) {
+    _paramCommitTimer = null;
+    const outlet = state.outlets.get(outletId);
+    if (outlet && _paramBeforeSnapshot && _paramBeforeSnapshot.id === outletId) {
+        const after = snapshotOutlet(outlet);
+        // Only push if something actually changed
+        if (JSON.stringify(_paramBeforeSnapshot) !== JSON.stringify(after)) {
+            undoRedo.push({
+                type: 'modify',
+                outletId,
+                before: _paramBeforeSnapshot,
+                after
+            });
+        }
+        _paramBeforeSnapshot = null;
+    }
+}
 
 function handleParamChanged(outletId) {
     recalculate(outletId);
@@ -536,6 +629,128 @@ function _updateRoomTypeSelect() {
 }
 
 // ================================================================
+//  UNDO / REDO
+// ================================================================
+
+function applyUndo() {
+    const action = undoRedo.undo();
+    if (!action) return;
+    _applyAction(action, true);
+}
+
+function applyRedo() {
+    const action = undoRedo.redo();
+    if (!action) return;
+    _applyAction(action, false);
+}
+
+function _applyAction(action, isUndo) {
+    switch (action.type) {
+        case 'add':
+            if (isUndo) {
+                // Undo add = remove the outlet (skip pushing to undo stack)
+                handleOutletDelete(action.outletId, true);
+            } else {
+                // Redo add = re-add the outlet
+                _restoreOutletFromSnapshot(action.after);
+            }
+            break;
+
+        case 'remove':
+            if (isUndo) {
+                // Undo remove = re-add the outlet
+                _restoreOutletFromSnapshot(action.before);
+            } else {
+                // Redo remove = remove it again
+                handleOutletDelete(action.outletId, true);
+            }
+            break;
+
+        case 'modify':
+            if (isUndo) {
+                _restoreOutletState(action.before);
+            } else {
+                _restoreOutletState(action.after);
+            }
+            break;
+    }
+}
+
+/**
+ * Restore an outlet from a snapshot (for undo-remove / redo-add)
+ */
+function _restoreOutletFromSnapshot(snap) {
+    const typeData = getType(snap.typeKey);
+    if (!typeData) return;
+    const sizeData = typeData.sizes[snap.sizeIndex];
+    if (!sizeData) return;
+
+    const outletData = createOutletData(
+        snap.typeKey, snap.sizeIndex, sizeData, typeData,
+        new THREE.Vector3(snap.position3D.x, snap.position3D.y, snap.position3D.z),
+        snap.volumeFlow, snap.outletCategory
+    );
+    outletData.id = snap.id;
+    outletData.supplyTemp = snap.supplyTemp;
+    outletData.rotation = snap.rotation;
+    outletData.slotLength = snap.slotLength;
+    outletData.slotDirection = snap.slotDirection;
+    outletData.mounting = snap.mounting;
+    outletData.outletCategory = snap.outletCategory;
+
+    addOutlet(outletData);
+}
+
+/**
+ * Restore existing outlet parameters from a snapshot (for undo/redo modify)
+ */
+function _restoreOutletState(snap) {
+    const outlet = state.outlets.get(snap.id);
+    if (!outlet) return;
+
+    const typeData = getType(snap.typeKey);
+    if (!typeData) return;
+    const sizeData = typeData.sizes[snap.sizeIndex];
+    if (!sizeData) return;
+
+    outlet.typeKey = snap.typeKey;
+    outlet.sizeIndex = snap.sizeIndex;
+    outlet.sizeData = sizeData;
+    outlet.typeData = typeData;
+    outlet.volumeFlow = snap.volumeFlow;
+    outlet.supplyTemp = snap.supplyTemp;
+    outlet.rotation = snap.rotation;
+    outlet.slotLength = snap.slotLength;
+    outlet.slotDirection = snap.slotDirection;
+    outlet.mounting = snap.mounting;
+    outlet.outletCategory = snap.outletCategory;
+    outlet.position3D.x = snap.position3D.x;
+    outlet.position3D.y = snap.position3D.y;
+    outlet.position3D.z = snap.position3D.z;
+
+    // Update 3D representation
+    outletPlacer.updateOutletPosition(snap.id, outlet.position3D);
+
+    // Re-create the 3D mesh if the type changed
+    const entry = outletPlacer.outlets.get(snap.id);
+    if (entry && entry.typeKey !== snap.typeKey) {
+        outletPlacer.removeOutlet(snap.id);
+        outletPlacer.placeOutlet(snap.typeKey, snap.sizeIndex, outlet.position3D, snap.id, snap.outletCategory);
+    }
+
+    recalculate(snap.id);
+    selectOutlet(snap.id);
+}
+
+// Update undo/redo button states
+undoRedo.onChange((canUndo, canRedo) => {
+    const btnUndo = document.getElementById('btn-undo');
+    const btnRedo = document.getElementById('btn-redo');
+    if (btnUndo) btnUndo.disabled = !canUndo;
+    if (btnRedo) btnRedo.disabled = !canRedo;
+});
+
+// ================================================================
 //  KEYBOARD
 // ================================================================
 
@@ -574,6 +789,18 @@ function handleKeyboard(event) {
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         saveProject();
+    }
+
+    // Undo: Ctrl+Z
+    if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        applyUndo();
+    }
+
+    // Redo: Ctrl+Shift+Z or Ctrl+Y
+    if ((event.ctrlKey || event.metaKey) && (event.key === 'Z' || event.key === 'y')) {
+        event.preventDefault();
+        applyRedo();
     }
 }
 

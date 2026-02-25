@@ -30,6 +30,7 @@ class OutletPlacer {
         this.onDeselected = null;
         this.onMoved = null;
         this.onRotated = null;
+        this.onDragEnd = null;
 
         this._boundMouseMove = this._onMouseMove.bind(this);
         this._boundMouseDown = this._onMouseDown.bind(this);
@@ -37,12 +38,13 @@ class OutletPlacer {
         this._boundKeyDown = this._onKeyDown.bind(this);
     }
 
-    init({ onPlaced, onSelected, onDeselected, onMoved, onRotated }) {
+    init({ onPlaced, onSelected, onDeselected, onMoved, onRotated, onDragEnd }) {
         this.onPlaced = onPlaced;
         this.onSelected = onSelected;
         this.onDeselected = onDeselected;
         this.onMoved = onMoved || null;
         this.onRotated = onRotated || null;
+        this.onDragEnd = onDragEnd || null;
 
         const canvas = sceneManager.canvas;
         canvas.addEventListener('pointermove', this._boundMouseMove);
@@ -305,6 +307,7 @@ class OutletPlacer {
 
     _onMouseUp(event) {
         if (this.isDragging) {
+            const draggedId = this.dragOutletId;
             this.isDragging = false;
             this.dragOutletId = null;
             this.dragStartPos = null;
@@ -312,6 +315,9 @@ class OutletPlacer {
             // Re-enable orbit controls
             sceneManager.controls.enabled = true;
             document.getElementById('viewport')?.classList.remove('placing');
+
+            // Notify drag end for undo/redo
+            if (this.onDragEnd) this.onDragEnd(draggedId);
         }
     }
 

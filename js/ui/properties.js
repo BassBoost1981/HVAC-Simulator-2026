@@ -11,14 +11,16 @@ class PropertiesPanel {
         this.emptyState = document.getElementById('props-empty');
         this.onParamChange = null;
         this.onOutletDelete = null;
+        this.onBeforeParamChange = null;
         this.currentOutlet = null;
         this.currentRoom = null;
         this.currentResults = null;
     }
 
-    init(onParamChange, onOutletDelete) {
+    init(onParamChange, onOutletDelete, onBeforeParamChange) {
         this.onParamChange = onParamChange;
         this.onOutletDelete = onOutletDelete;
+        this.onBeforeParamChange = onBeforeParamChange || null;
     }
 
     /**
@@ -284,6 +286,12 @@ class PropertiesPanel {
         const propSlotDir = document.getElementById('prop-slot-direction');
         const btnDelete = document.getElementById('btn-delete-outlet');
 
+        const emitBefore = () => {
+            if (this.onBeforeParamChange && this.currentOutlet) {
+                this.onBeforeParamChange(this.currentOutlet.id);
+            }
+        };
+
         const emit = () => {
             if (this.onParamChange && this.currentOutlet) {
                 this.onParamChange(this.currentOutlet.id);
@@ -293,6 +301,7 @@ class PropertiesPanel {
         if (propType) {
             propType.addEventListener('change', (e) => {
                 if (this.currentOutlet) {
+                    emitBefore();
                     this.currentOutlet.typeKey = e.target.value;
                     this.currentOutlet.sizeIndex = 0;
                     const newType = getType(e.target.value);
@@ -313,6 +322,7 @@ class PropertiesPanel {
         if (propSize) {
             propSize.addEventListener('change', (e) => {
                 if (this.currentOutlet) {
+                    emitBefore();
                     const idx = parseInt(e.target.value);
                     this.currentOutlet.sizeIndex = idx;
                     const typeData = getType(this.currentOutlet.typeKey);
@@ -326,6 +336,7 @@ class PropertiesPanel {
         if (propFlow) {
             propFlow.addEventListener('input', (e) => {
                 if (this.currentOutlet) {
+                    emitBefore();
                     this.currentOutlet.volumeFlow = parseFloat(e.target.value) || 0;
                     emit();
                 }
@@ -335,6 +346,7 @@ class PropertiesPanel {
         if (propTemp) {
             propTemp.addEventListener('input', (e) => {
                 if (this.currentOutlet) {
+                    emitBefore();
                     this.currentOutlet.supplyTemp = parseFloat(e.target.value) || 18;
                     emit();
                 }
@@ -344,6 +356,7 @@ class PropertiesPanel {
         if (propPosX) {
             propPosX.addEventListener('input', (e) => {
                 if (this.currentOutlet) {
+                    emitBefore();
                     this.currentOutlet.position3D.x = parseFloat(e.target.value) || 0;
                     emit();
                 }
@@ -353,6 +366,7 @@ class PropertiesPanel {
         if (propPosZ) {
             propPosZ.addEventListener('input', (e) => {
                 if (this.currentOutlet) {
+                    emitBefore();
                     this.currentOutlet.position3D.z = parseFloat(e.target.value) || 0;
                     emit();
                 }
@@ -362,6 +376,7 @@ class PropertiesPanel {
         if (propSlot) {
             propSlot.addEventListener('input', (e) => {
                 if (this.currentOutlet) {
+                    emitBefore();
                     this.currentOutlet.slotLength = parseFloat(e.target.value) || 1000;
                     emit();
                 }
@@ -371,6 +386,7 @@ class PropertiesPanel {
         if (propSlotDir) {
             propSlotDir.addEventListener('change', (e) => {
                 if (this.currentOutlet) {
+                    emitBefore();
                     this.currentOutlet.slotDirection = e.target.value;
                     emit();
                 }
