@@ -3,6 +3,7 @@
 // ============================================================
 
 import { getAllTypes, getAllExhaustTypes } from '../simulation/diffuserDB.js';
+import { t, onLanguageChange } from './i18n.js';
 
 // SVG icons for each outlet type (inline, no external files)
 const ICONS = {
@@ -31,20 +32,21 @@ class Sidebar {
     init(onSelect) {
         this.onSelectCallback = onSelect;
         this._render();
+        onLanguageChange(() => this._render());
     }
 
     _render() {
         this.container.innerHTML = '';
 
         // --- Supply section ---
-        this._renderSectionHeader('Zuluft', 'supply');
+        this._renderSectionHeader(t('sidebar.supply'), 'supply');
         const supplyTypes = getAllTypes();
         supplyTypes.forEach(type => {
             this._renderOutletGroup(type, 'supply');
         });
 
         // --- Exhaust section ---
-        this._renderSectionHeader('Abluft', 'exhaust');
+        this._renderSectionHeader(t('sidebar.exhaust'), 'exhaust');
         const exhaustTypes = getAllExhaustTypes();
         exhaustTypes.forEach(type => {
             this._renderOutletGroup(type, 'exhaust');
@@ -68,7 +70,7 @@ class Sidebar {
         header.className = 'outlet-group-header';
         header.innerHTML = `
             <span class="outlet-icon">${ICONS[type.key] || ''}</span>
-            <span>${type.nameDE}</span>
+            <span>${t('diffuser.' + type.key)}</span>
         `;
 
         const sizesDiv = document.createElement('div');

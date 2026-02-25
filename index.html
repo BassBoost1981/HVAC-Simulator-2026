@@ -23,7 +23,7 @@
 
         <!-- Header -->
         <header id="header">
-            <span class="app-title">HVAC Simulator</span>
+            <span class="app-title" data-i18n="app.title">HVAC Simulator</span>
             <span class="project-name" id="project-name">Neues Projekt</span>
             <div class="header-actions">
                 <div class="lang-toggle">
@@ -53,8 +53,8 @@
                 <!-- Populated by properties.js -->
                 <div class="empty-state" id="props-empty">
                     <div class="empty-state-icon">&#9881;</div>
-                    <div class="empty-state-text">
-                        Erstellen Sie einen Raum und<br>platzieren Sie einen Auslass
+                    <div class="empty-state-text" data-i18n="props.empty">
+                        Erstellen Sie einen Raum und platzieren Sie einen Auslass
                     </div>
                 </div>
             </div>
@@ -63,10 +63,10 @@
         <!-- Toolbar -->
         <div id="toolbar">
             <div class="toolbar-group">
-                <button class="toolbar-btn" id="btn-view-perspective" title="Perspektivansicht">Perspektive</button>
-                <button class="toolbar-btn" id="btn-view-top" title="Draufsicht">Draufsicht</button>
-                <button class="toolbar-btn" id="btn-view-front" title="Vorderansicht">Vorne</button>
-                <button class="toolbar-btn" id="btn-view-side" title="Seitenansicht">Seite</button>
+                <button class="toolbar-btn" id="btn-view-perspective" data-i18n="toolbar.perspective">Perspektive</button>
+                <button class="toolbar-btn" id="btn-view-top" data-i18n="toolbar.top">Draufsicht</button>
+                <button class="toolbar-btn" id="btn-view-front" data-i18n="toolbar.front">Vorne</button>
+                <button class="toolbar-btn" id="btn-view-side" data-i18n="toolbar.side">Seite</button>
             </div>
             <div class="toolbar-separator"></div>
             <div class="toolbar-group">
@@ -80,14 +80,14 @@
             </div>
             <div class="toolbar-separator"></div>
             <div class="toolbar-group">
-                <button class="toolbar-btn active" id="btn-vis-cone" title="Reichweiten-Kegel anzeigen">Kegel</button>
-                <button class="toolbar-btn" id="btn-vis-particles" title="Partikelanimation">Partikel</button>
-                <button class="toolbar-btn" id="btn-vis-zones" title="Geschwindigkeitszonen">Zonen</button>
-                <button class="toolbar-btn" id="btn-vis-sound" title="Schall-Heatmap">Schall</button>
+                <button class="toolbar-btn active" id="btn-vis-cone" data-i18n="toolbar.cone">Kegel</button>
+                <button class="toolbar-btn" id="btn-vis-particles" data-i18n="toolbar.particles">Partikel</button>
+                <button class="toolbar-btn" id="btn-vis-zones" data-i18n="toolbar.zones">Zonen</button>
+                <button class="toolbar-btn" id="btn-vis-sound" data-i18n="toolbar.sound">Schall</button>
             </div>
             <div class="toolbar-separator"></div>
             <div class="toolbar-group">
-                <span class="toolbar-label">Höhe:</span>
+                <span class="toolbar-label" data-i18n="toolbar.height">Höhe:</span>
                 <input type="range" id="slice-height-slider" min="0.1" max="3.0" step="0.1" value="1.2" class="toolbar-slider" title="Schnittebene für Heatmaps">
                 <span class="toolbar-value" id="slice-height-value">1.2 m</span>
             </div>
@@ -100,10 +100,10 @@
             <span class="status-item" id="status-calc">Berechnung: —</span>
             <span class="status-spacer"></span>
             <div class="status-actions">
-                <button class="status-btn" id="btn-new-room" title="Neuen Raum erstellen">Neuer Raum</button>
-                <button class="status-btn" id="btn-load" title="Projekt laden">Laden</button>
-                <button class="status-btn" id="btn-save" title="Projekt speichern">Speichern</button>
-                <button class="status-btn" id="btn-pdf" title="Phase 3" disabled>PDF</button>
+                <button class="status-btn" id="btn-new-room" data-i18n="status.newRoom">Neuer Raum</button>
+                <button class="status-btn" id="btn-load" data-i18n="status.load">Laden</button>
+                <button class="status-btn" id="btn-save" data-i18n="status.save">Speichern</button>
+                <button class="status-btn" id="btn-pdf" data-i18n="status.pdf">PDF</button>
             </div>
         </div>
     </div>
@@ -111,12 +111,12 @@
     <!-- Room Creation Modal -->
     <div class="modal-overlay" id="room-modal-overlay">
         <div class="modal" id="room-modal">
-            <div class="modal-title">Neuen Raum erstellen</div>
-            <div class="modal-subtitle">Geben Sie die Raummaße in Metern ein</div>
+            <div class="modal-title" data-i18n="room.create">Neuen Raum erstellen</div>
+            <div class="modal-subtitle" data-i18n="room.create.subtitle">Geben Sie die Raummaße in Metern ein</div>
 
             <div class="modal-dimensions">
                 <div class="form-group" id="fg-length">
-                    <label for="room-length">Länge (L)</label>
+                    <label for="room-length" data-i18n="room.length">Länge (L)</label>
                     <div class="input-row">
                         <input type="number" id="room-length" min="0.5" max="50" step="0.1" value="8">
                         <span class="input-unit">m</span>
@@ -124,7 +124,7 @@
                     <div class="form-error">0.5 – 50 m</div>
                 </div>
                 <div class="form-group" id="fg-width">
-                    <label for="room-width">Breite (B)</label>
+                    <label for="room-width" data-i18n="room.width">Breite (B)</label>
                     <div class="input-row">
                         <input type="number" id="room-width" min="0.5" max="50" step="0.1" value="6">
                         <span class="input-unit">m</span>
@@ -132,7 +132,7 @@
                     <div class="form-error">0.5 – 50 m</div>
                 </div>
                 <div class="form-group" id="fg-height">
-                    <label for="room-height">Höhe (H)</label>
+                    <label for="room-height" data-i18n="room.height">Höhe (H)</label>
                     <div class="input-row">
                         <input type="number" id="room-height" min="0.5" max="20" step="0.1" value="3">
                         <span class="input-unit">m</span>
@@ -142,7 +142,7 @@
             </div>
 
             <div class="form-group">
-                <label for="room-type">Raumtyp</label>
+                <label for="room-type" data-i18n="room.type">Raumtyp</label>
                 <select id="room-type">
                     <option value="office">Einzelbüro (35 dB(A))</option>
                     <option value="open_office">Großraumbüro (40 dB(A))</option>
@@ -155,17 +155,17 @@
             </div>
 
             <div class="form-group">
-                <label for="room-temp">Raumtemperatur</label>
+                <label for="room-temp" data-i18n="room.temperature">Raumtemperatur</label>
                 <div class="input-row">
                     <input type="number" id="room-temp" min="18" max="30" step="0.5" value="22">
                     <span class="input-unit">°C</span>
                 </div>
             </div>
 
-            <div class="modal-subtitle" style="margin-top:12px;">Oberflächenmaterialien</div>
+            <div class="modal-subtitle" style="margin-top:12px;" data-i18n="surface.title">Oberflächenmaterialien</div>
             <div class="modal-surfaces">
                 <div class="form-group form-group-sm">
-                    <label for="surface-ceiling">Decke</label>
+                    <label for="surface-ceiling" data-i18n="surface.ceiling">Decke</label>
                     <select id="surface-ceiling">
                         <option value="acoustic_tile" selected>Akustikdecke (α 0.85)</option>
                         <option value="concrete">Beton/Putz (α 0.03)</option>
@@ -173,7 +173,7 @@
                     </select>
                 </div>
                 <div class="form-group form-group-sm">
-                    <label for="surface-floor">Boden</label>
+                    <label for="surface-floor" data-i18n="surface.floor">Boden</label>
                     <select id="surface-floor">
                         <option value="carpet" selected>Teppichboden (α 0.30)</option>
                         <option value="concrete">Beton/Putz (α 0.03)</option>
@@ -181,7 +181,7 @@
                     </select>
                 </div>
                 <div class="form-group form-group-sm">
-                    <label for="surface-walls">Wände</label>
+                    <label for="surface-walls" data-i18n="surface.walls">Wände</label>
                     <select id="surface-walls">
                         <option value="concrete" selected>Beton/Putz (α 0.03)</option>
                         <option value="plasterboard">Gipskarton (α 0.08)</option>
@@ -192,8 +192,8 @@
             </div>
 
             <div class="modal-actions">
-                <button class="btn-secondary" id="room-modal-cancel" style="display:none;">Abbrechen</button>
-                <button class="btn-primary" id="room-modal-create">Erstellen</button>
+                <button class="btn-secondary" id="room-modal-cancel" style="display:none;" data-i18n="room.cancel">Abbrechen</button>
+                <button class="btn-primary" id="room-modal-create" data-i18n="room.create.button">Erstellen</button>
             </div>
         </div>
     </div>
@@ -201,20 +201,20 @@
     <!-- Welcome Modal -->
     <div class="modal-overlay" id="welcome-modal-overlay">
         <div class="modal">
-            <div class="modal-title">HVAC Simulator</div>
-            <div class="modal-subtitle">Luftauslass-Planung & Akustik-Simulation</div>
+            <div class="modal-title" data-i18n="welcome.title">HVAC Simulator</div>
+            <div class="modal-subtitle" data-i18n="welcome.subtitle">Luftauslass-Planung & Akustik-Simulation</div>
             <div class="welcome-options">
                 <div class="welcome-option" id="welcome-new">
-                    <div class="option-title">Neues Projekt</div>
-                    <div class="option-desc">Raum erstellen und Auslässe platzieren</div>
+                    <div class="option-title" data-i18n="welcome.new">Neues Projekt</div>
+                    <div class="option-desc" data-i18n="welcome.new.desc">Raum erstellen und Auslässe platzieren</div>
                 </div>
                 <div class="welcome-option" id="welcome-example">
-                    <div class="option-title">Beispiel laden</div>
-                    <div class="option-desc">Besprechungsraum 8×6×3 m mit 2 Drallauslässen</div>
+                    <div class="option-title" data-i18n="welcome.example">Beispiel laden</div>
+                    <div class="option-desc" data-i18n="welcome.example.desc">Besprechungsraum 8×6×3 m mit 2 Drallauslässen</div>
                 </div>
                 <div class="welcome-option" id="welcome-open">
-                    <div class="option-title">Projekt öffnen</div>
-                    <div class="option-desc">.hvac-Datei vom Computer laden</div>
+                    <div class="option-title" data-i18n="welcome.open">Projekt öffnen</div>
+                    <div class="option-desc" data-i18n="welcome.open.desc">.hvac-Datei vom Computer laden</div>
                 </div>
             </div>
         </div>

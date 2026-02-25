@@ -3,6 +3,7 @@
 // ============================================================
 
 import { DIFFUSER_TYPES, EXHAUST_TYPES, ROOM_TYPES, SLOT_DIRECTIONS, getType, getSize } from '../simulation/diffuserDB.js';
+import { t, onLanguageChange } from './i18n.js';
 
 class PropertiesPanel {
     constructor() {
@@ -33,34 +34,34 @@ class PropertiesPanel {
 
         this.container.innerHTML = `
             <div class="props-section">
-                <div class="props-section-title">Raum</div>
+                <div class="props-section-title">${t('props.room.title')}</div>
                 <div class="result-row">
-                    <span class="result-label">Abmessungen</span>
+                    <span class="result-label">${t('props.room.dimensions')}</span>
                     <span class="result-value">${room.length} × ${room.width} × ${room.height}</span>
                     <span class="result-unit">m</span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Grundfläche</span>
+                    <span class="result-label">${t('props.room.area')}</span>
                     <span class="result-value">${area}</span>
                     <span class="result-unit">m²</span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Volumen</span>
+                    <span class="result-label">${t('props.room.volume')}</span>
                     <span class="result-value">${volume}</span>
                     <span class="result-unit">m³</span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Raumtyp</span>
-                    <span class="result-value">${roomType ? roomType.nameDE : room.roomType}</span>
+                    <span class="result-label">${t('props.room.type')}</span>
+                    <span class="result-value">${roomType ? t('room.type.' + room.roomType) : room.roomType}</span>
                     <span class="result-unit"></span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Temperatur</span>
+                    <span class="result-label">${t('props.room.temp')}</span>
                     <span class="result-value">${room.temperature}</span>
                     <span class="result-unit">°C</span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Schallgrenze</span>
+                    <span class="result-label">${t('props.room.soundLimit')}</span>
                     <span class="result-value">${roomType ? roomType.maxDbA : '—'}</span>
                     <span class="result-unit">dB(A)</span>
                 </div>
@@ -93,18 +94,18 @@ class PropertiesPanel {
         // Build type options — from EXHAUST_TYPES or DIFFUSER_TYPES based on category
         const typeCatalog = isExhaust ? EXHAUST_TYPES : DIFFUSER_TYPES;
         const typeOptions = Object.entries(typeCatalog).map(([key, data]) =>
-            `<option value="${key}" ${key === outlet.typeKey ? 'selected' : ''}>${data.nameDE}</option>`
+            `<option value="${key}" ${key === outlet.typeKey ? 'selected' : ''}>${t('diffuser.' + key)}</option>`
         ).join('');
 
         // Slot-specific fields (only for supply slot)
         let slotField = '';
         if (outlet.typeKey === 'slot') {
             const dirOptions = Object.entries(SLOT_DIRECTIONS).map(([key, data]) =>
-                `<option value="${key}" ${key === (outlet.slotDirection || 'bidirectional') ? 'selected' : ''}>${data.nameDE}</option>`
+                `<option value="${key}" ${key === (outlet.slotDirection || 'bidirectional') ? 'selected' : ''}>${t('slotDirection.' + key)}</option>`
             ).join('');
             slotField = `
             <div class="form-group">
-                <label>Schlitzlänge</label>
+                <label>${t('props.outlet.slotLength')}</label>
                 <div class="input-row">
                     <input type="number" id="prop-slot-length" min="300" max="3000" step="50"
                            value="${outlet.slotLength || outlet.sizeData.lengthDefault}">
@@ -112,7 +113,7 @@ class PropertiesPanel {
                 </div>
             </div>
             <div class="form-group">
-                <label>Ausblasrichtung</label>
+                <label>${t('props.outlet.slotDirection')}</label>
                 <select id="prop-slot-direction">${dirOptions}</select>
             </div>
             `;
@@ -121,7 +122,7 @@ class PropertiesPanel {
         // Supply temperature field (only for supply outlets)
         const supplyTempField = isExhaust ? '' : `
                 <div class="form-group">
-                    <label>Zulufttemperatur</label>
+                    <label>${t('props.outlet.supplyTemp')}</label>
                     <div class="input-row">
                         <input type="number" id="prop-supply-temp" min="10" max="40" step="0.5" value="${outlet.supplyTemp}">
                         <span class="input-unit">°C</span>
@@ -135,30 +136,30 @@ class PropertiesPanel {
         const v0Color = results?.exitVelocity > 5 ? 'red' : results?.exitVelocity > 3 ? 'yellow' : 'green';
 
         // Labels differ for exhaust
-        const throwLabel = isExhaust ? 'Saugreichweite' : 'Wurfweite x₀.₂';
-        const sectionTitle = isExhaust ? 'Abluft-Parameter' : 'Auslass-Parameter';
-        const maxVLabel = isExhaust ? 'Max. v Aufenthaltsz.' : 'Max. v Aufenthaltsz.';
+        const throwLabel = isExhaust ? t('props.results.suctionReach') : t('props.results.throwDistance');
+        const sectionTitle = isExhaust ? t('props.outlet.exhaustTitle') : t('props.outlet.supplyTitle');
+        const maxVLabel = t('props.results.maxVelocity');
         const maxVValue = isExhaust ? '—' : (results ? results.maxVelocityOccupied.toFixed(2) : '—');
 
         // Exhaust note
         const exhaustNote = isExhaust ? `
                 <div class="result-row" style="opacity:0.6; font-style:italic;">
-                    <span class="result-label">Abluft — kein Freistrahl</span>
+                    <span class="result-label">${t('props.outlet.exhaustNote')}</span>
                 </div>` : '';
 
         this.container.innerHTML = `
             <div class="props-section">
                 <div class="props-section-title">${sectionTitle}</div>
                 <div class="form-group">
-                    <label>Typ</label>
+                    <label>${t('props.outlet.type')}</label>
                     <select id="prop-type">${typeOptions}</select>
                 </div>
                 <div class="form-group">
-                    <label>Größe</label>
+                    <label>${t('props.outlet.size')}</label>
                     <select id="prop-size">${sizeOptions}</select>
                 </div>
                 <div class="form-group">
-                    <label>Volumenstrom</label>
+                    <label>${t('props.outlet.volumeFlow')}</label>
                     <div class="input-row">
                         <input type="number" id="prop-flow"
                                min="${outlet.sizeData.vFlowRange[0]}"
@@ -171,7 +172,7 @@ class PropertiesPanel {
                 ${supplyTempField}
                 ${slotField}
                 <div class="form-group">
-                    <label>Position</label>
+                    <label>${t('props.outlet.position')}</label>
                     <div class="input-row">
                         <span class="input-unit" style="min-width:14px">X</span>
                         <input type="number" id="prop-pos-x" step="0.25" value="${outlet.position3D.x.toFixed(2)}">
@@ -182,10 +183,10 @@ class PropertiesPanel {
             </div>
 
             <div class="props-section">
-                <div class="props-section-title">Berechnungsergebnisse</div>
+                <div class="props-section-title">${t('props.results.title')}</div>
                 ${exhaustNote}
                 <div class="result-row">
-                    <span class="result-label">Austrittsgeschw. v₀</span>
+                    <span class="result-label">${t('props.results.exitVelocityShort')}</span>
                     <span class="result-value">${results ? results.exitVelocity.toFixed(2) : '—'}</span>
                     <span class="result-unit">m/s</span>
                     <span class="traffic-light ${v0Color}"></span>
@@ -197,29 +198,29 @@ class PropertiesPanel {
                 </div>
                 ${!isExhaust && results?.throwDistanceCoanda ? `
                 <div class="result-row">
-                    <span class="result-label" style="font-size:10px; opacity:0.6">  davon Coanda</span>
+                    <span class="result-label" style="font-size:10px; opacity:0.6">  ${t('props.results.coanda')}</span>
                     <span class="result-value" style="font-size:11px; opacity:0.6">${results.throwDistanceCoanda.toFixed(1)}</span>
                     <span class="result-unit">m</span>
                 </div>` : ''}
                 ${!isExhaust && results?.detachmentPoint ? `
                 <div class="result-row">
-                    <span class="result-label" style="font-size:10px; opacity:0.6">  Ablösepunkt</span>
+                    <span class="result-label" style="font-size:10px; opacity:0.6">  ${t('props.results.detachment')}</span>
                     <span class="result-value" style="font-size:11px; opacity:0.6">${results.detachmentPoint.toFixed(1)}</span>
                     <span class="result-unit">m</span>
                 </div>` : ''}
                 <div class="result-row">
-                    <span class="result-label">Druckverlust Δp</span>
+                    <span class="result-label">${t('props.results.pressureDrop')}</span>
                     <span class="result-value">${results ? results.pressureDrop.toFixed(0) : '—'}</span>
                     <span class="result-unit">Pa</span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Schallleistung Lw</span>
+                    <span class="result-label">${t('props.results.soundPower')}</span>
                     <span class="result-value">${results ? results.soundPowerLevel.toFixed(1) : '—'}</span>
                     <span class="result-unit">dB(A)</span>
                     <span class="traffic-light ${soundColor}"></span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Schallpegel 3 m</span>
+                    <span class="result-label">${t('props.results.soundAt3m')}</span>
                     <span class="result-value">${results ? results.soundPressureAt3m.toFixed(1) : '—'}</span>
                     <span class="result-unit">dB(A)</span>
                     <span class="traffic-light ${sound3mColor}"></span>
@@ -231,7 +232,7 @@ class PropertiesPanel {
                     ${isExhaust ? '' : `<span class="traffic-light ${vlColor}"></span>`}
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Eff. Fläche</span>
+                    <span class="result-label">${t('props.results.effectiveArea')}</span>
                     <span class="result-value">${results ? (results.effectiveArea * 10000).toFixed(0) : '—'}</span>
                     <span class="result-unit">cm²</span>
                 </div>
@@ -239,21 +240,21 @@ class PropertiesPanel {
 
             ${comfortResult ? `
             <div class="props-section">
-                <div class="props-section-title">Komfortbewertung</div>
+                <div class="props-section-title">${t('props.comfort.title')}</div>
                 <div class="result-row">
-                    <span class="result-label">Kategorie</span>
+                    <span class="result-label">${t('props.comfort.category')}</span>
                     <span class="result-value">${comfortResult.overallCategory}</span>
                     <span class="result-unit"></span>
                     <span class="traffic-light ${comfortResult.overallCategory === 'FAIL' ? 'red' : comfortResult.overallCategory === 'III' ? 'yellow' : 'green'}"></span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Zugluftrate DR</span>
+                    <span class="result-label">${t('props.comfort.draughtRate')}</span>
                     <span class="result-value">${comfortResult.draughtRate.toFixed(1)}</span>
                     <span class="result-unit">%</span>
                     <span class="traffic-light ${comfortResult.draughtRate > 15 ? 'red' : comfortResult.draughtRate > 10 ? 'yellow' : 'green'}"></span>
                 </div>
                 <div class="result-row">
-                    <span class="result-label">Σ Schall vs. Limit</span>
+                    <span class="result-label">${t('props.comfort.totalSound')}</span>
                     <span class="result-value">${comfortResult.totalSoundLevel.toFixed(1)} / ${comfortResult.soundLimit}</span>
                     <span class="result-unit">dB(A)</span>
                     <span class="traffic-light ${comfortResult.soundCompliant ? (comfortResult.soundMargin > 5 ? 'green' : 'yellow') : 'red'}"></span>
@@ -263,7 +264,7 @@ class PropertiesPanel {
 
             <div class="props-section" style="padding-top:8px;">
                 <button class="btn-secondary" id="btn-delete-outlet" style="width:100%; color:var(--error); border-color: var(--error);">
-                    Auslass entfernen
+                    ${t('props.outlet.deleteButton')}
                 </button>
             </div>
         `;

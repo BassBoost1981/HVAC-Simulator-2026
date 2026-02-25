@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import WebGL from 'three/addons/capabilities/WebGL.js';
 
 class SceneManager {
     constructor() {
@@ -19,6 +20,13 @@ class SceneManager {
     }
 
     init() {
+        // WebGL2 availability check
+        if (!WebGL.isWebGL2Available()) {
+            const container = document.getElementById('viewport');
+            container.appendChild(WebGL.getWebGL2ErrorMessage());
+            throw new Error('WebGL2 is not available');
+        }
+
         this.canvas = document.getElementById('viewport-canvas');
         const container = document.getElementById('viewport');
 

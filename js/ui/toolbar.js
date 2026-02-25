@@ -2,6 +2,8 @@
 // toolbar — Bottom toolbar and status bar
 // ============================================================
 
+import { t, onLanguageChange } from './i18n.js';
+
 class Toolbar {
     constructor() {
         this.onViewChange = null;
@@ -38,20 +40,35 @@ class Toolbar {
 
         // New room button
         document.getElementById('btn-new-room')?.addEventListener('click', () => onNewRoom());
+
+        // Re-render status on language change
+        onLanguageChange(() => {
+            if (this._lastOutletCount != null) {
+                this.updateStatus(this._lastOutletCount, this._lastCalcTime);
+            }
+            if (this._lastBalance) {
+                this.updateBalance(this._lastBalance);
+            }
+        });
     }
 
     /**
      * Update status bar info
      */
     updateStatus(outletCount, calcTimeMs) {
+        this._lastOutletCount = outletCount;
+        this._lastCalcTime = calcTimeMs;
+
         const statusOutlets = document.getElementById('status-outlets');
         const statusCalc = document.getElementById('status-calc');
 
         if (statusOutlets) {
-            statusOutlets.textContent = `${outletCount} ${outletCount === 1 ? 'Auslass' : 'Auslässe'}`;
+            const key = outletCount === 1 ? 'status.outlet.one' : 'status.outlet.many';
+            statusOutlets.textContent = t(key, { count: outletCount });
         }
         if (statusCalc) {
-            statusCalc.textContent = `Berechnung: ${calcTimeMs != null ? calcTimeMs.toFixed(1) + ' ms' : '—'}`;
+            const timeStr = calcTimeMs != null ? calcTimeMs.toFixed(1) + ' ms' : '\u2014';
+            statusCalc.textContent = t('status.calc.label', { time: timeStr });
         }
     }
 
@@ -60,6 +77,8 @@ class Toolbar {
      * @param {Object|null} balance - { supplyTotal, exhaustTotal, diffPercent }
      */
     updateBalance(balance) {
+        this._lastBalance = balance;
+
         const el = document.getElementById('status-balance');
         if (!el) return;
 
@@ -84,16 +103,16 @@ class Toolbar {
         // Warning styling
         if (exhaustTotal === 0) {
             el.className = 'status-item status-balance';
-            el.title = 'Keine Abluft platziert';
+            el.title = t('status.noExhaust');
         } else if (diffPercent > 10) {
             el.className = 'status-item status-balance status-balance-red';
-            el.title = `Volumenstrom-Differenz ${diffPercent.toFixed(0)}% — starker \u00DCber-/Unterdruck`;
+            el.title = t('status.balance.diffStrong', { percent: diffPercent.toFixed(0) });
         } else if (diffPercent > 5) {
             el.className = 'status-item status-balance status-balance-yellow';
-            el.title = `Volumenstrom-Differenz ${diffPercent.toFixed(0)}%`;
+            el.title = t('status.balance.diff', { percent: diffPercent.toFixed(0) });
         } else {
             el.className = 'status-item status-balance status-balance-green';
-            el.title = `Bilanz ausgeglichen (${diffPercent.toFixed(0)}%)`;
+            el.title = t('status.balance.balanced', { percent: diffPercent.toFixed(0) });
         }
     }
 }

@@ -38,7 +38,7 @@ export async function exportPDF(state, comfortResult) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     // Capture 3D viewport screenshots before generating pages
-    const screenshots = await _captureScreenshots();
+    const screenshots = await _captureScreenshots(state);
 
     // Page 1: Cover
     _drawCoverPage(doc, state, screenshots.perspective, t);
@@ -74,7 +74,7 @@ export async function exportPDF(state, comfortResult) {
 //  SCREENSHOT CAPTURE
 // ================================================================
 
-async function _captureScreenshots() {
+async function _captureScreenshots(state) {
     const canvas = sceneManager.canvas;
 
     // Take screenshot of current view (perspective)
@@ -86,7 +86,7 @@ async function _captureScreenshots() {
     const camTarget = sceneManager.controls.target.clone();
 
     // Top-down view
-    const room = _getRoomDimensions();
+    const room = state && state.room ? state.room : null;
     if (room) {
         const maxDim = Math.max(room.length, room.width) * 0.8;
         sceneManager.camera.position.set(0, maxDim + 2, 0.01);
@@ -105,10 +105,7 @@ async function _captureScreenshots() {
     return { perspective, topDown, particles: perspective, sound: perspective };
 }
 
-function _getRoomDimensions() {
-    // We'll pass this externally; for now use a simple approach
-    return null;
-}
+// _getRoomDimensions removed — room data is now passed directly via state
 
 // ================================================================
 //  PAGE 1: COVER

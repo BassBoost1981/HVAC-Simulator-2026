@@ -16,7 +16,7 @@ import sidebar from './ui/sidebar.js';
 import propertiesPanel from './ui/properties.js';
 import toolbar from './ui/toolbar.js';
 import roomModal from './ui/roomModal.js';
-import { initI18n, setLanguage } from './ui/i18n.js';
+import { initI18n, setLanguage, t, onLanguageChange } from './ui/i18n.js';
 import { initProjectFile, saveProject, openFileDialog } from './io/projectFile.js';
 import { exportPDF } from './io/pdfExport.js';
 
@@ -88,8 +88,7 @@ async function init() {
 
     const btnPdf = document.getElementById('btn-pdf');
     if (btnPdf) {
-        btnPdf.disabled = false;
-        btnPdf.title = 'PDF-Report exportieren';
+        btnPdf.title = t('status.pdf.title');
         btnPdf.addEventListener('click', () => {
             if (!state.room) return;
             _updateComfort();
@@ -505,6 +504,35 @@ async function switchLanguage(lang) {
     await setLanguage(lang);
     document.getElementById('lang-de')?.classList.toggle('active', lang === 'de');
     document.getElementById('lang-en')?.classList.toggle('active', lang === 'en');
+
+    // Re-render dynamic content with new language
+    if (state.room) {
+        const projName = document.getElementById('project-name');
+        if (projName) {
+            projName.textContent = `${state.room.length}×${state.room.width}×${state.room.height} m — ${getRoomTypeName(state.room.roomType)}`;
+        }
+        if (state.selectedOutletId) {
+            const outlet = state.outlets.get(state.selectedOutletId);
+            const results = state.results.get(state.selectedOutletId);
+            if (outlet) propertiesPanel.showOutlet(outlet, state.room, results || null, state.comfortResult);
+        } else {
+            propertiesPanel.showRoom(state.room);
+        }
+    }
+
+    // Re-populate room type select in modal
+    _updateRoomTypeSelect();
+}
+
+function _updateRoomTypeSelect() {
+    const sel = document.getElementById('room-type');
+    if (!sel) return;
+    const types = ['office', 'open_office', 'meeting_room', 'classroom', 'hospital', 'restaurant', 'auditorium'];
+    const dbAs = { office: 35, open_office: 40, meeting_room: '30\u201335', classroom: 35, hospital: 30, restaurant: 45, auditorium: 30 };
+    const current = sel.value;
+    sel.innerHTML = types.map(key =>
+        `<option value="${key}" ${key === current ? 'selected' : ''}>${t('room.type.' + key)} (${dbAs[key]} dB(A))</option>`
+    ).join('');
 }
 
 // ================================================================
@@ -655,13 +683,7 @@ function loadStateFromProject(project) {
 // ================================================================
 
 function getRoomTypeName(key) {
-    const names = {
-        office: 'Einzelbüro', open_office: 'Großraumbüro',
-        meeting_room: 'Besprechungsraum', classroom: 'Klassenzimmer',
-        hospital: 'Krankenhauszimmer', restaurant: 'Restaurant',
-        auditorium: 'Hörsaal'
-    };
-    return names[key] || key;
+    return t('room.type.' + key);
 }
 
 // ---- Start ----
