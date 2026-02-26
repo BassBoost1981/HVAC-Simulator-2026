@@ -128,5 +128,9 @@
     "obstacle.desk": "Schreibtisch",
     "obstacle.cabinet": "Schrank",
     "obstacle.custom_box": "Box (frei)",
-    "obstacle.diameter": "Durchmesser"
+    "obstacle.diameter": "Durchmesser",
+    "settings.logo": "Logo",
+    "settings.logo.title": "Firmenlogo hochladen (PDF)",
+    "settings.logo.remove": "Klicken zum Entfernen",
+    "toolbar.compare": "Vergleich"
 }

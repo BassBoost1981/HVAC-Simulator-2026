@@ -128,5 +128,9 @@
     "obstacle.desk": "Desk",
     "obstacle.cabinet": "Cabinet",
     "obstacle.custom_box": "Custom Box",
-    "obstacle.diameter": "Diameter"
+    "obstacle.diameter": "Diameter",
+    "settings.logo": "Logo",
+    "settings.logo.title": "Upload company logo (PDF)",
+    "settings.logo.remove": "Click to remove",
+    "toolbar.compare": "Compare"
 }

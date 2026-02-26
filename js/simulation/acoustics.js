@@ -4,6 +4,7 @@
 // ============================================================
 
 import { ROOM_TYPES, SURFACE_MATERIALS } from './diffuserDB.js';
+import { getVelocityMagnitudeAt } from './jetInteraction.js';
 
 /**
  * Calculate equivalent absorption area for a room
@@ -202,39 +203,47 @@ export function generateVelocityHeatmap(outlets, room, gridSpacing = 0.5, planeH
     let minVal = Infinity;
     let maxVal = -Infinity;
 
+    // Check if outlets have full data for vector superposition
+    const hasVectorData = outlets.length > 0 && outlets[0].typeKey != null;
+
     for (let iz = 0; iz < rows; iz++) {
         for (let ix = 0; ix < cols; ix++) {
             const worldX = -halfL + ix * gridSpacing;
             const worldZ = -halfW + iz * gridSpacing;
 
-            // Sum velocity contributions from all outlets (simplified: take max)
-            let maxV = 0;
-            for (const outlet of outlets) {
-                const dx = worldX - outlet.position3D.x;
-                const dz = worldZ - outlet.position3D.z;
-                const horizontalDist = Math.sqrt(dx * dx + dz * dz);
-                const verticalDist = Math.abs(planeHeight - outlet.position3D.y);
-                const totalDist = Math.sqrt(horizontalDist * horizontalDist + verticalDist * verticalDist);
+            let velocity;
+            if (hasVectorData && outlets.length > 1) {
+                // Vector superposition for multi-outlet interaction
+                velocity = getVelocityMagnitudeAt(worldX, planeHeight, worldZ, outlets);
+            } else {
+                // Single outlet or legacy data: use max (backward compatible)
+                velocity = 0;
+                for (const outlet of outlets) {
+                    const dx = worldX - outlet.position3D.x;
+                    const dz = worldZ - outlet.position3D.z;
+                    const horizontalDist = Math.sqrt(dx * dx + dz * dz);
+                    const verticalDist = Math.abs(planeHeight - outlet.position3D.y);
+                    const totalDist = Math.sqrt(horizontalDist * horizontalDist + verticalDist * verticalDist);
 
-                if (outlet.jetResult && outlet.jetResult.velocityAtDistance) {
-                    let v = outlet.jetResult.velocityAtDistance(totalDist);
+                    if (outlet.jetResult && outlet.jetResult.velocityAtDistance) {
+                        let v = outlet.jetResult.velocityAtDistance(totalDist);
 
-                    // Apply vertical decay for ceiling outlets (Gaussian profile)
-                    if (outlet.mounting === 'ceiling' && horizontalDist > 0.1) {
-                        const sigma = 0.12 * horizontalDist;
-                        const verticalDecay = Math.exp(-(verticalDist * verticalDist) / (2 * sigma * sigma));
-                        v *= verticalDecay;
+                        if (outlet.mounting === 'ceiling' && horizontalDist > 0.1) {
+                            const sigma = 0.12 * horizontalDist;
+                            const verticalDecay = Math.exp(-(verticalDist * verticalDist) / (2 * sigma * sigma));
+                            v *= verticalDecay;
+                        }
+
+                        velocity = Math.max(velocity, v);
                     }
-
-                    maxV = Math.max(maxV, v);
                 }
             }
 
             const idx = iz * cols + ix;
-            grid[idx] = maxV;
+            grid[idx] = velocity;
 
-            if (maxV < minVal) minVal = maxV;
-            if (maxV > maxVal) maxVal = maxV;
+            if (velocity < minVal) minVal = velocity;
+            if (velocity > maxVal) maxVal = velocity;
         }
     }
 

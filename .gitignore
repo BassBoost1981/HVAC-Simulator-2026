@@ -13,6 +13,15 @@ Desktop.ini
 __pycache__/
 *.pyc
 
+# Node
+node_modules/
+package-lock.json
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+
 # Agent/tool config (not part of the app)
 .agents/
 .shared/

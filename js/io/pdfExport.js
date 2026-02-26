@@ -116,6 +116,13 @@ function _drawCoverPage(doc, state, screenshot, t) {
     doc.setFillColor(...HEADER_BG);
     doc.rect(0, 0, A4_W, 80, 'F');
 
+    // Company logo (top-right in header)
+    if (state.projectLogo) {
+        try {
+            doc.addImage(state.projectLogo, 'AUTO', A4_W - MARGIN - 30, 10, 30, 20);
+        } catch (e) { /* logo failed */ }
+    }
+
     // Title
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(28);
@@ -151,7 +158,7 @@ function _drawCoverPage(doc, state, screenshot, t) {
 // ================================================================
 
 function _drawRoomOverview(doc, state, screenshot, t) {
-    _drawPageHeader(doc, t.roomOverview, '2 / 6');
+    _drawPageHeader(doc, t.roomOverview, '2 / 6', state);
 
     let y = 35;
 
@@ -203,7 +210,7 @@ function _drawRoomOverview(doc, state, screenshot, t) {
 // ================================================================
 
 function _drawOutletOverview(doc, state, t) {
-    _drawPageHeader(doc, t.outletOverview, '3 / 6');
+    _drawPageHeader(doc, t.outletOverview, '3 / 6', state);
 
     let y = 35;
 
@@ -327,7 +334,7 @@ function _drawOutletTable(doc, outletList, y, isExhaust, t) {
 // ================================================================
 
 function _drawAirflowAnalysis(doc, state, comfortResult, screenshot, t) {
-    _drawPageHeader(doc, t.airflowAnalysis, '4 / 6');
+    _drawPageHeader(doc, t.airflowAnalysis, '4 / 6', state);
 
     let y = 35;
 
@@ -365,7 +372,7 @@ function _drawAirflowAnalysis(doc, state, comfortResult, screenshot, t) {
 // ================================================================
 
 function _drawSoundAnalysis(doc, state, comfortResult, screenshot, t) {
-    _drawPageHeader(doc, t.soundAnalysis, '5 / 6');
+    _drawPageHeader(doc, t.soundAnalysis, '5 / 6', state);
 
     let y = 35;
 
@@ -419,7 +426,7 @@ function _drawSoundAnalysis(doc, state, comfortResult, screenshot, t) {
 // ================================================================
 
 function _drawSummary(doc, state, comfortResult, t) {
-    _drawPageHeader(doc, t.summary, '6 / 6');
+    _drawPageHeader(doc, t.summary, '6 / 6', state);
 
     let y = 40;
 
@@ -469,14 +476,23 @@ function _drawSummary(doc, state, comfortResult, t) {
 //  DRAWING HELPERS
 // ================================================================
 
-function _drawPageHeader(doc, title, pageNum) {
+function _drawPageHeader(doc, title, pageNum, state) {
     doc.setFillColor(...ACCENT);
     doc.rect(0, 0, A4_W, 24, 'F');
+
+    // Company logo (right side of header)
+    if (state && state.projectLogo) {
+        try {
+            doc.addImage(state.projectLogo, 'AUTO', A4_W - MARGIN - 18, 3, 18, 12);
+        } catch (e) { /* logo failed */ }
+    }
+
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14);
     doc.text(title, MARGIN, 16);
     doc.setFontSize(9);
-    doc.text(pageNum, A4_W - MARGIN, 16, { align: 'right' });
+    const pageNumX = (state && state.projectLogo) ? A4_W - MARGIN - 22 : A4_W - MARGIN;
+    doc.text(pageNum, pageNumX, 16, { align: 'right' });
 }
 
 function _drawFooter(doc, pageNum) {

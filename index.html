@@ -26,6 +26,11 @@
             <span class="app-title" data-i18n="app.title">HVAC Simulator</span>
             <span class="project-name" id="project-name">Neues Projekt</span>
             <div class="header-actions">
+                <div class="logo-upload-wrapper">
+                    <button class="status-btn" id="btn-logo-upload" title="Firmenlogo hochladen (PDF)" data-i18n="settings.logo">Logo</button>
+                    <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/svg+xml" hidden>
+                    <img id="logo-preview" class="logo-preview" alt="Logo" hidden title="Klicken zum Entfernen">
+                </div>
                 <div class="lang-toggle">
                     <button id="lang-de" class="active" data-lang="de">DE</button>
                     <button id="lang-en" data-lang="en">EN</button>
@@ -41,10 +46,17 @@
             </div>
         </aside>
 
-        <!-- 3D Viewport -->
+        <!-- 3D Viewport A -->
         <main id="viewport">
+            <div class="viewport-label" id="viewport-a-label" hidden>A</div>
             <canvas id="viewport-canvas"></canvas>
         </main>
+
+        <!-- 3D Viewport B (comparison mode) -->
+        <aside id="viewport-b" hidden>
+            <div class="viewport-label" id="viewport-b-label">B</div>
+            <canvas id="viewport-b-canvas"></canvas>
+        </aside>
 
         <!-- Properties Panel -->
         <aside id="properties-panel">
@@ -84,6 +96,10 @@
                 <button class="toolbar-btn" id="btn-vis-particles" data-i18n="toolbar.particles">Partikel</button>
                 <button class="toolbar-btn" id="btn-vis-zones" data-i18n="toolbar.zones">Zonen</button>
                 <button class="toolbar-btn" id="btn-vis-sound" data-i18n="toolbar.sound">Schall</button>
+            </div>
+            <div class="toolbar-separator"></div>
+            <div class="toolbar-group">
+                <button class="toolbar-btn" id="btn-comparison" data-i18n="toolbar.compare">Vergleich</button>
             </div>
             <div class="toolbar-separator"></div>
             <div class="toolbar-group">

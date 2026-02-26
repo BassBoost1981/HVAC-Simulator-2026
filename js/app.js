@@ -21,6 +21,7 @@ import undoRedo, { snapshotOutlet, snapshotObstacle } from './ui/undoRedo.js';
 import obstacleManager, { OBSTACLE_PRESETS } from './scene/obstacleManager.js';
 import { initProjectFile, saveProject, openFileDialog } from './io/projectFile.js';
 import { exportPDF } from './io/pdfExport.js';
+import comparisonRenderer from './scene/comparisonRenderer.js';
 
 // ---- Application State ----
 const state = {
@@ -39,7 +40,9 @@ const state = {
     projectName: '',
     comfortResult: null,
     balance: null,
-    selectedObstacleId: null
+    selectedObstacleId: null,
+    projectLogo: null,
+    comparisonMode: false
 };
 
 // ---- Initialization ----
@@ -103,6 +106,31 @@ async function init() {
 
     // Obstacle placement buttons
     _initObstacleMenu();
+
+    // Logo upload
+    const btnLogo = document.getElementById('btn-logo-upload');
+    const logoInput = document.getElementById('logo-file-input');
+    if (btnLogo && logoInput) {
+        btnLogo.addEventListener('click', () => logoInput.click());
+        logoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) return; // Max 2 MB
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                state.projectLogo = ev.target.result;
+                const preview = document.getElementById('logo-preview');
+                if (preview) { preview.src = state.projectLogo; preview.hidden = false; }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    // Logo remove via click on preview
+    document.getElementById('logo-preview')?.addEventListener('click', () => {
+        state.projectLogo = null;
+        const preview = document.getElementById('logo-preview');
+        if (preview) { preview.src = ''; preview.hidden = true; }
+    });
 
     // Save/Load/PDF
     initProjectFile(getStateForSave, loadStateFromProject);
@@ -171,6 +199,29 @@ function _enablePhase2Buttons() {
             if (sliderVal) sliderVal.textContent = h.toFixed(1) + ' m';
             if (state.showSoundHeatmap || state.showVelocityZones) {
                 _scheduleHeatmapUpdate();
+            }
+        });
+    }
+
+    // Comparison mode toggle / Vergleichsmodus-Toggle
+    const btnComparison = document.getElementById('btn-comparison');
+    if (btnComparison) {
+        btnComparison.addEventListener('click', () => {
+            const viewportB = document.getElementById('viewport-b');
+            const labelA = document.getElementById('viewport-a-label');
+            if (!viewportB) return;
+
+            state.comparisonMode = comparisonRenderer.toggle();
+            btnComparison.classList.toggle('active', state.comparisonMode);
+
+            if (state.comparisonMode) {
+                viewportB.hidden = false;
+                if (labelA) labelA.hidden = false;
+                // Clone current outlets to Config B
+                comparisonRenderer.cloneOutlets(state.outlets);
+            } else {
+                viewportB.hidden = true;
+                if (labelA) labelA.hidden = true;
             }
         });
     }
@@ -537,7 +588,7 @@ function updateHeatmaps() {
         return;
     }
 
-    // Prepare outlet data for heatmap generation
+    // Prepare outlet data for heatmap generation (extended for jet interaction)
     const outletsForCalc = [];
     state.outlets.forEach((outlet, id) => {
         const result = state.results.get(id);
@@ -546,7 +597,11 @@ function updateHeatmaps() {
                 position3D: outlet.position3D,
                 mounting: outlet.mounting,
                 soundPowerLevel: result.soundPowerLevel,
-                jetResult: result
+                jetResult: result,
+                typeKey: outlet.typeKey,
+                rotation: outlet.rotation || 0,
+                outletCategory: outlet.outletCategory || 'supply',
+                slotDirection: outlet.slotDirection || null
             });
         }
     });
@@ -1054,6 +1109,7 @@ function getStateForSave() {
         showVelocityZones: state.showVelocityZones,
         sliceHeight: state.sliceHeight,
         projectName: state.projectName,
+        projectLogo: state.projectLogo || null,
         cameraState: {
             position: {
                 x: sceneManager.camera.position.x,
@@ -1138,6 +1194,13 @@ function loadStateFromProject(project) {
             if (project.settings) {
                 state.gridSnap = project.settings.gridSnap || 0.25;
                 state.sliceHeight = project.settings.sliceHeight || 1.2;
+            }
+
+            // Restore logo
+            if (project.meta && project.meta.logo) {
+                state.projectLogo = project.meta.logo;
+                const preview = document.getElementById('logo-preview');
+                if (preview) { preview.src = state.projectLogo; preview.hidden = false; }
             }
 
             // Deselect after loading

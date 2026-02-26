@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import sceneManager from './sceneManager.js';
 import roomBuilder from './roomBuilder.js';
 import { getType } from '../simulation/diffuserDB.js';
+import { createDetailedOutletModel } from './outletModels.js';
 
 class OutletPlacer {
     constructor() {
@@ -226,8 +227,13 @@ class OutletPlacer {
 
         const isInside = roomBuilder.isInsideRoom(snappedX, snappedZ);
         const color = isInside ? 0x4caf50 : 0xf44336;
-        this.ghostMesh.material.color.setHex(color);
-        this.ghostMesh.material.opacity = isInside ? 0.5 : 0.3;
+        const opacity = isInside ? 0.45 : 0.25;
+        this.ghostMesh.traverse(child => {
+            if (child.isMesh && child.material) {
+                child.material.color.setHex(color);
+                child.material.opacity = opacity;
+            }
+        });
         this.ghostIndicator.material.color.setHex(color);
     }
 
@@ -394,71 +400,9 @@ class OutletPlacer {
     }
 
     _createOutletMesh(typeKey, sizeData, isGhost, outletCategory) {
-        const d0 = sizeData.d0 || 0.2;
-        const isExhaust = outletCategory === 'exhaust';
-        let geometry;
-
-        switch (typeKey) {
-            case 'swirl':
-            case 'exhaustSwirl':
-                geometry = new THREE.CylinderGeometry(d0 / 2, d0 / 2, 0.025, 32);
-                break;
-            case 'plateValve':
-            case 'exhaustPlateValve':
-                geometry = new THREE.CylinderGeometry(d0 / 2, d0 / 2 * 0.7, 0.035, 24);
-                break;
-            case 'slot':
-            case 'exhaustSlot': {
-                const slotLen = (sizeData.lengthDefault || 1000) / 1000;
-                const slotW = (sizeData.slotWidth || 0.015) * (sizeData.slotCount || 1) * 3;
-                geometry = new THREE.BoxGeometry(slotLen, 0.02, Math.max(slotW, 0.06));
-                break;
-            }
-            case 'nozzle':
-                geometry = new THREE.SphereGeometry(d0 / 2, 16, 16);
-                break;
-            case 'ceilingGrille': {
-                const side = d0;
-                geometry = new THREE.BoxGeometry(side, 0.02, side);
-                break;
-            }
-            case 'dqjSupply':
-            case 'dqjExhaust': {
-                // SCHAKO DQJ: round faceplate with visible vane ring
-                const outerR = d0 / 2;
-                const innerR = outerR * 0.5;
-                const ring = new THREE.RingGeometry(innerR, outerR, 32);
-                const disk = new THREE.CircleGeometry(innerR, 32);
-                // Merge into a cylinder for 3D appearance
-                geometry = new THREE.CylinderGeometry(outerR, outerR, 0.03, 32);
-                break;
-            }
-            case 'dqjslcSupply': {
-                // SCHAKO DQJSLC: round with outer blowing ring (slightly larger visible diameter)
-                const outerR = d0 / 2 * 1.15; // outer ring extends beyond d0
-                geometry = new THREE.CylinderGeometry(outerR, outerR, 0.03, 32);
-                break;
-            }
-            default:
-                geometry = new THREE.CylinderGeometry(0.1, 0.1, 0.02, 16);
-        }
-
-        // Exhaust: orange-brown, Supply: blue-grey
-        const color = isGhost ? 0x4caf50 : (isExhaust ? 0xcc8844 : 0x6688cc);
-        const emissiveColor = isExhaust ? 0x442211 : 0x222244;
-        const material = new THREE.MeshStandardMaterial({
-            color,
-            transparent: isGhost,
-            opacity: isGhost ? 0.5 : 0.85,
-            roughness: 0.4,
-            metalness: 0.3,
-            emissive: isGhost ? 0x000000 : emissiveColor,
-            emissiveIntensity: 0.3
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.name = typeKey;
-        return mesh;
+        const group = createDetailedOutletModel(typeKey, sizeData, isGhost, outletCategory);
+        group.name = typeKey;
+        return group;
     }
 }
 

@@ -4,6 +4,7 @@
 // ============================================================
 
 import { getRoomTypeLimit } from './diffuserDB.js';
+import { getVelocityMagnitudeAt } from './jetInteraction.js';
 
 // Comfort categories per DIN EN 16798-1
 const CATEGORIES = {
@@ -22,20 +23,65 @@ const CATEGORIES = {
 export function evaluateComfort(outlets, room) {
     const roomLimit = getRoomTypeLimit(room.roomType);
 
-    // Find worst-case velocity in occupied zone across all outlets
+    // Find worst-case velocity in occupied zone
     let maxVelocityOccupied = 0;
     let totalSoundLevels = [];
 
-    for (const { jetResult, outlet } of outlets) {
+    // Collect sound levels from all outlets
+    for (const { jetResult } of outlets) {
         if (!jetResult) continue;
-        const isExhaust = outlet?.outletCategory === 'exhaust' || jetResult.outletCategory === 'exhaust';
-        // Exhaust outlets don't create free jets — skip for velocity comfort
-        if (!isExhaust && jetResult.maxVelocityOccupied > maxVelocityOccupied) {
-            maxVelocityOccupied = jetResult.maxVelocityOccupied;
-        }
-        // Sound: include both supply and exhaust (exhaust grilles generate noise)
         if (jetResult.soundPowerLevel != null) {
             totalSoundLevels.push(jetResult.soundPowerLevel);
+        }
+    }
+
+    // Multi-outlet interaction: sample 10×10×3 grid in occupied zone
+    const supplyOutlets = outlets.filter(o => {
+        const cat = o.outlet?.outletCategory || o.jetResult?.outletCategory;
+        return cat !== 'exhaust' && o.jetResult;
+    });
+
+    if (supplyOutlets.length > 1 && room.length && room.width) {
+        // Build outlet data array for vector field
+        const outletData = outlets
+            .filter(o => o.jetResult)
+            .map(o => ({
+                position3D: o.outlet?.position3D || o.position3D,
+                jetResult: o.jetResult,
+                typeKey: o.outlet?.typeKey || o.typeKey || 'swirl',
+                rotation: o.outlet?.rotation || 0,
+                outletCategory: o.outlet?.outletCategory || o.jetResult?.outletCategory || 'supply',
+                mounting: o.outlet?.mounting || 'ceiling',
+                slotDirection: o.outlet?.slotDirection || null
+            }));
+
+        const halfL = room.length / 2;
+        const halfW = room.width / 2;
+        const stepsX = 10, stepsZ = 10, stepsY = 3;
+        const dxStep = room.length / stepsX;
+        const dzStep = room.width / stepsZ;
+        // Occupied zone heights: 0.1m, 1.0m, 1.8m
+        const heights = [0.1, 1.0, 1.8];
+
+        for (let iy = 0; iy < stepsY; iy++) {
+            for (let iz = 0; iz < stepsZ; iz++) {
+                for (let ix = 0; ix < stepsX; ix++) {
+                    const wx = -halfL + (ix + 0.5) * dxStep;
+                    const wz = -halfW + (iz + 0.5) * dzStep;
+                    const wy = heights[iy];
+                    const v = getVelocityMagnitudeAt(wx, wy, wz, outletData);
+                    if (v > maxVelocityOccupied) maxVelocityOccupied = v;
+                }
+            }
+        }
+    } else {
+        // Single outlet or no interaction: use per-outlet max
+        for (const { jetResult, outlet } of outlets) {
+            if (!jetResult) continue;
+            const isExhaust = outlet?.outletCategory === 'exhaust' || jetResult.outletCategory === 'exhaust';
+            if (!isExhaust && jetResult.maxVelocityOccupied > maxVelocityOccupied) {
+                maxVelocityOccupied = jetResult.maxVelocityOccupied;
+            }
         }
     }
 

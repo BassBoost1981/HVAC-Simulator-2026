@@ -202,6 +202,20 @@ class SceneManager {
      */
     disposeMesh(mesh) {
         if (!mesh) return;
+        // Handle Groups by traversing children
+        if (mesh.isGroup || (mesh.children && mesh.children.length > 0)) {
+            mesh.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            });
+            return;
+        }
         if (mesh.geometry) mesh.geometry.dispose();
         if (mesh.material) {
             if (Array.isArray(mesh.material)) {

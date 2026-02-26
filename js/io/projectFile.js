@@ -1,5 +1,6 @@
 // ============================================================
 // projectFile.js — Save/Load .hvac project files (JSON)
+// Supports both Browser (download/file-input) and Tauri (native dialogs)
 // ============================================================
 
 const PROJECT_VERSION = '2.0';
@@ -9,6 +10,11 @@ const AUTOSAVE_INTERVAL = 60000; // 60 seconds
 let autoSaveTimer = null;
 let getStateCallback = null;
 let loadStateCallback = null;
+
+/** Detect Tauri runtime */
+function isTauri() {
+    return typeof window !== 'undefined' && !!window.__TAURI_INTERNALS__;
+}
 
 /**
  * Initialize the project file system
@@ -30,17 +36,40 @@ export function initProjectFile(getState, loadState) {
 }
 
 /**
- * Save current project as .hvac file (download)
+ * Save current project as .hvac file
+ * Uses native dialog in Tauri, browser download fallback otherwise
  */
-export function saveProject(filename) {
+export async function saveProject(filename) {
     if (!getStateCallback) return;
 
     const state = getStateCallback();
     const project = _stateToProject(state);
     const json = JSON.stringify(project, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-
     const name = filename || _generateFilename(state);
+
+    if (isTauri()) {
+        try {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+            const filePath = await save({
+                defaultPath: name,
+                filters: [{ name: 'HVAC Project', extensions: ['hvac'] }]
+            });
+            if (filePath) {
+                await writeTextFile(filePath, json);
+            }
+        } catch (e) {
+            console.warn('Tauri save failed, falling back to browser download', e);
+            _browserDownload(json, name);
+        }
+    } else {
+        _browserDownload(json, name);
+    }
+}
+
+/** Browser fallback: download via temporary <a> element */
+function _browserDownload(json, name) {
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -80,8 +109,38 @@ export function loadProjectFromFile(file) {
 
 /**
  * Trigger file open dialog
+ * Uses native dialog in Tauri, browser file input fallback otherwise
  */
-export function openFileDialog() {
+export async function openFileDialog() {
+    if (isTauri()) {
+        try {
+            const { open } = await import('@tauri-apps/plugin-dialog');
+            const { readTextFile } = await import('@tauri-apps/plugin-fs');
+            const filePath = await open({
+                multiple: false,
+                filters: [{ name: 'HVAC Project', extensions: ['hvac', 'json'] }]
+            });
+            if (filePath) {
+                const contents = await readTextFile(filePath);
+                const project = JSON.parse(contents);
+                const validated = _validateProject(project);
+                if (validated.valid) {
+                    if (loadStateCallback) loadStateCallback(project);
+                } else {
+                    alert(validated.error);
+                }
+            }
+        } catch (e) {
+            console.warn('Tauri open failed, falling back to browser dialog', e);
+            _browserOpenDialog();
+        }
+    } else {
+        _browserOpenDialog();
+    }
+}
+
+/** Browser fallback: open via temporary <input type="file"> */
+function _browserOpenDialog() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.hvac,.json';
@@ -160,7 +219,8 @@ function _stateToProject(state) {
             created: state.created || new Date().toISOString(),
             modified: new Date().toISOString(),
             author: '',
-            description: ''
+            description: '',
+            logo: state.projectLogo || null
         },
         room: state.room ? {
             length: state.room.length,
